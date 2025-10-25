@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cek Nomer & Kuota XL</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at top left, #0f172a, #020617);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .glass {
+      background: rgba(255,255,255,0.06);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255,255,255,0.12);
+      box-shadow: 0 6px 30px rgba(0,0,0,0.35);
+      transition: all 0.3s ease;
+    }
+    .neon {
+      color: #22d3ee;
+      text-shadow: 0 0 8px #22d3ee, 0 0 18px #0ea5e9;
+    }
+    .progress-bar {
+      height: 8px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #06b6d4, #3b82f6, #22d3ee);
+      background-size: 200% 100%;
+      animation: move 2s linear infinite;
+      transition: width 0.6s ease;
+    }
+    @keyframes move {
+      from { background-position: 0% 0%; }
+      to { background-position: 200% 0%; }
+    }
+    .fade { animation: fadeIn 0.6s ease; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .card-glow:hover {
+      box-shadow: 0 0 25px rgba(34,211,238,0.5);
+      transform: scale(1.03);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="glass p-8 rounded-3xl w-full max-w-3xl fade">
+    <h1 class="text-3xl font-bold mb-4 neon text-center">
+      <i class="fa-solid fa-bolt mr-2"></i>Cek Nomer & Kuota XL
+    </h1>
+    <p class="text-slate-300 mb-6 text-center">
+      Masukkan nomor HP Anda untuk melihat informasi kartu dan paket aktif.
+    </p>
+
+    <div class="flex flex-col sm:flex-row gap-4 mb-6">
+      <input id="nomor" type="tel" placeholder="Masukkan nomor (08... / 62...)" 
+        class="flex-1 px-4 py-3 rounded-xl text-gray-900 border border-cyan-400/40 focus:ring-2 focus:ring-cyan-500 outline-none">
+      <button id="cekBtn" 
+        class="bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold px-6 py-3 rounded-xl hover:scale-105 transition-all">
+        <i class="fa-solid fa-magnifying-glass mr-2"></i>Cek
+      </button>
+    </div>
+
+    <div id="loading" class="hidden text-cyan-300 text-center py-4">
+      <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Memproses...
+    </div>
+    <div id="error" class="hidden text-red-400 text-center py-2 font-medium"></div>
+
+    <div id="hasil" class="hidden fade">
+      <div class="glass p-4 rounded-2xl mb-6 border border-cyan-400/20 fade">
+        <h2 class="text-xl font-semibold mb-4 text-cyan-400">
+          <i class="fa-solid fa-user-circle mr-2"></i>Informasi Nomer
+        </h2>
+        <div id="info" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-slate-200"></div>
+      </div>
+
+      <h2 class="text-xl font-semibold mb-4 text-cyan-400">
+        <i class="fa-solid fa-database mr-2"></i>Daftar Paket Aktif
+      </h2>
+      <div id="kuotaList" class="grid gap-4 sm:grid-cols-1 lg:grid-cols-2"></div>
+    </div>
+  </div>
+
+  <footer class="mt-6 text-slate-500 text-sm text-center">
+    Dibuat oleh <span class="text-cyan-400 font-semibold">Maulana Isbad Rofiqi</span> © 2025
+  </footer>
+
+  <script>
+    function formatNumber(phone) {
+      let cleaned = phone.replace(/\D/g, '');
+      if (cleaned.startsWith('62')) return cleaned;
+      if (cleaned.startsWith('0')) return '62' + cleaned.substring(1);
+      if (cleaned.startsWith('8')) return '62' + cleaned;
+      return cleaned;
+    }
+
+    async function fetchWithProxy(number) {
+      const formatted = formatNumber(number);
+      const url = `https://bendith.my.id/end.php?check=package&number=${formatted}&version=2`;
+      const proxies = [
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+        `https://corsproxy.io/?${encodeURIComponent(url)}`,
+        `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`
+      ];
+      for (const proxy of proxies) {
+        try {
+          const res = await fetch(proxy);
+          if (res.ok) return await res.json();
+        } catch {}
+      }
+      throw new Error('Semua proxy gagal.');
+    }
+
+    const nomor = document.getElementById('nomor');
+    const cekBtn = document.getElementById('cekBtn');
+    const hasil = document.getElementById('hasil');
+    const info = document.getElementById('info');
+    const kuotaList = document.getElementById('kuotaList');
+    const loading = document.getElementById('loading');
+    const errorDiv = document.getElementById('error');
+
+    cekBtn.addEventListener('click', async () => {
+      const no = nomor.value.trim();
+      if (!no) return alert('Masukkan nomor terlebih dahulu.');
+      if (!/^(08|62|8)\d{7,12}$/.test(no)) return alert('Format nomor salah.');
+
+      hasil.classList.add('hidden');
+      errorDiv.classList.add('hidden');
+      loading.classList.remove('hidden');
+
+      try {
+        const data = await fetchWithProxy(no);
+        loading.classList.add('hidden');
+
+        if (!data.success) {
+          errorDiv.textContent = data.message || 'Gagal mengambil data.';
+          errorDiv.classList.remove('hidden');
+          return;
+        }
+
+        hasil.classList.remove('hidden');
+        const subs = data.data.subs_info;
+        const paket = data.data.package_info;
+
+        // Info nomor lengkap
+        info.innerHTML = `
+          <p><i class="fa-solid fa-phone mr-2 text-cyan-400"></i><b>Nomer XL:</b> ${subs.msisdn}</p>
+          <p><i class="fa-solid fa-signal mr-2 text-cyan-400"></i><b>Operator:</b> ${subs.operator}</p>
+          <p><i class="fa-solid fa-wifi mr-2 text-cyan-400"></i><b>Tipe Jaringan:</b> ${subs.net_type}</p>
+          <p><i class="fa-solid fa-calendar-check mr-2 text-cyan-400"></i><b>Umur Kartu:</b> ${subs.tenure}</p>
+          <p><i class="fa-solid fa-calendar-day mr-2 text-cyan-400"></i><b>Aktif Sampai:</b> ${subs.exp_date}</p>
+          <p><i class="fa-solid fa-hourglass-half mr-2 text-cyan-400"></i><b>Masa Tenggang:</b> ${subs.grace_until}</p>
+          <p><i class="fa-solid fa-mobile-screen-button mr-2 text-cyan-400"></i><b>VoLTE:</b> Device: ${subs.volte.device?'Ya':'Tidak'}, Area: ${subs.volte.area?'Ya':'Tidak'}, SIM: ${subs.volte.simcard?'Ya':'Tidak'}</p>
+        `;
+
+        // Kuota & paket
+        kuotaList.innerHTML = '';
+        if (paket.packages && paket.packages.length > 0) {
+          paket.packages.forEach(p => {
+            let quotaHTML = '';
+            if (p.quotas && p.quotas.length) {
+              p.quotas.forEach(q => {
+                const percent = q.percent !== null && !isNaN(q.percent) ? Math.min(q.percent,100) : 0;
+                quotaHTML += `
+                  <div class="mb-3">
+                    <p class="text-slate-300 text-sm mb-1"><b>${q.name}</b></p>
+                    <p class="text-xs text-slate-400 mb-1">Total: ${q.total} | Sisa: ${q.remaining}</p>
+                    <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <div class="progress-bar" style="width:${percent}%;"></div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1 text-right">${percent}% tersisa</p>
+                  </div>
+                `;
+              });
+            } else {
+              quotaHTML = `<p class="text-slate-400 text-sm">Tidak ada detail kuota.</p>`;
+            }
+
+            // Gunakan fallback properti untuk expiry
+            const exp = p.expiry_date || p.expiry || p.end_date || 'Tidak diketahui';
+
+            kuotaList.innerHTML += `
+              <div class="glass card-glow p-5 rounded-2xl border border-cyan-400/20 fade">
+                <h3 class="font-semibold text-lg mb-3 text-cyan-300">
+                  <i class="fa-solid fa-box mr-2"></i>${p.name}
+                </h3>
+                <p class="text-xs text-slate-400 mb-3">
+                  <i class="fa-regular fa-calendar mr-1 text-cyan-400"></i>Masa Aktif Paket Sampai: <b>${exp}</b>
+                </p>
+                ${quotaHTML}
+              </div>
+            `;
+          });
+        } else {
+          kuotaList.innerHTML = '<p class="text-slate-400 text-center">Tidak ada paket aktif.</p>';
+        }
+
+      } catch (e) {
+        loading.classList.add('hidden');
+        errorDiv.textContent = 'Koneksi gagal, coba lagi.';
+        errorDiv.classList.remove('hidden');
+        console.error(e);
+      }
+    });
+
+    // Enter key support
+    nomor.addEventListener('keypress', e => {
+      if (e.key === 'Enter') cekBtn.click();
+    });
+  </script>
+</body>
+</html>
