@@ -130,10 +130,42 @@
     const loading = document.getElementById('loading');
     const errorDiv = document.getElementById('error');
 
+    // --- TAMBAHAN KODE UNTUK MERAPIKAN INPUT ---
+    // Listener ini akan aktif setiap kali ada input (ketikan, paste, dll)
+    nomor.addEventListener('input', (e) => {
+      const target = e.target;
+      const originalValue = target.value;
+      const cursorPosition = target.selectionStart;
+
+      // 1. Bersihkan nilai, hapus semua karakter selain angka (non-digit / \D)
+      // Ini akan menghapus "+", " ", "-", "(", ")" dll.
+      const cleanedValue = originalValue.replace(/\D/g, '');
+      
+      // 2. Cek apakah ada perubahan (jika tidak ada, jangan lakukan apa-apa)
+      if (originalValue !== cleanedValue) {
+        
+        // 3. Hitung berapa banyak karakter non-digit yang dihapus SEBELUM posisi kursor
+        // Ini penting agar kursor tidak lompat ke akhir
+        const nonDigitsBeforeCursor = (originalValue.substring(0, cursorPosition).match(/\D/g) || []).length;
+        
+        // 4. Set nilai input di field dengan nilai yang sudah bersih
+        target.value = cleanedValue;
+        
+        // 5. Kembalikan posisi kursor ke tempat yang benar
+        // Posisi baru = Posisi lama - (jumlah karakter non-digit yang dihapus)
+        const newCursorPosition = cursorPosition - nonDigitsBeforeCursor;
+        target.selectionStart = newCursorPosition;
+        target.selectionEnd = newCursorPosition;
+      }
+    });
+    // --- AKHIR TAMBAHAN KODE ---
+
     cekBtn.addEventListener('click', async () => {
-      const no = nomor.value.trim();
+      // Validasi sekarang akan selalu bekerja karena input sudah bersih
+      const no = nomor.value.trim(); 
       if (!no) return alert('Masukkan nomor terlebih dahulu.');
-      if (!/^(08|62|8)\d{7,12}$/.test(no)) return alert('Format nomor salah.');
+      // Validasi regex masih penting untuk format awal (08, 62, atau 8)
+      if (!/^(08|62|8)\d{7,12}$/.test(no)) return alert('Format nomor salah. (Harus diawali 08, 62, atau 8)');
 
       hasil.classList.add('hidden');
       errorDiv.classList.add('hidden');
@@ -162,6 +194,7 @@
           <p><i class="fa-solid fa-calendar-day mr-2 text-cyan-400"></i><b>Aktif Sampai:</b> ${subs.exp_date}</p>
           <p><i class="fa-solid fa-hourglass-half mr-2 text-cyan-400"></i><b>Masa Tenggang:</b> ${subs.grace_until}</p>
           <p><i class="fa-solid fa-mobile-screen-button mr-2 text-cyan-400"></i><b>VoLTE:</b> Device: ${subs.volte.device?'Ya':'Tidak'}, Area: ${subs.volte.area?'Ya':'Tidak'}, SIM: ${subs.volte.simcard?'Ya':'Tidak'}</p>
+
         `;
 
         // Kuota & paket
