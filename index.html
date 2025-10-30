@@ -278,7 +278,7 @@
     </div>
     
     <div id="cekMyIpSection" class="glass p-8 rounded-3xl w-full fade hidden">
-      <h1 class="text-3xl font-bold mb-4 neon text-center">
+       <h1 class="text-3xl font-bold mb-4 neon text-center">
         <i class="fa-solid fa-network-wired mr-2"></i>Cek MyIp Publik
       </h1>
       <p class="text-slate-300 mb-6 text-center">
@@ -324,7 +324,7 @@
       </div>
       
       <div id="hostLoading" class="hidden text-cyan-300 text-center py-4">
-        <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Mencari IP...
+        <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Mencari IP & Detail...
       </div>
       <div id="hostError" class="hidden text-red-400 text-center py-2 font-medium"></div>
       
@@ -332,14 +332,14 @@
         <div class="glass p-4 rounded-2xl border border-cyan-400/20 fade">
           <div class="flex justify-between items-center mb-3">
             <h2 class="text-xl font-semibold text-cyan-400">
-              <i class="fa-solid fa-check-circle mr-2"></i>Hasil DNS Lookup
+              <i class="fa-solid fa-check-circle mr-2"></i>Hasil Lookup
             </h2>
             <button id="copyHostBtn" class="bg-emerald-600 text-white font-semibold px-4 py-2 rounded-xl hover:bg-emerald-700 transition-all text-sm">
               <i class="fa-solid fa-copy mr-1"></i>Salin
             </button>
           </div>
           <textarea id="hostOutput" readonly 
-            class="w-full h-40 p-3 rounded-lg bg-slate-900 text-slate-200 font-mono text-sm border border-slate-700 focus:ring-2 focus:ring-cyan-500 outline-none"></textarea>
+            class="w-full h-80 p-3 rounded-lg bg-slate-900 text-slate-200 font-mono text-sm border border-slate-700 focus:ring-2 focus:ring-cyan-500 outline-none"></textarea>
         </div>
       </div>
     </div>
@@ -520,8 +520,7 @@
       if (e.key === 'Enter') cekBtn.click();
     });
 
-    // --- [DIUBAH] LOGIKA TOMBOL CEK MYIP ---
-    // [DIUBAH] Nama variabel
+    // --- LOGIKA TOMBOL CEK MYIP (TETAP SAMA) ---
     const cekMyIpBtn = document.getElementById('cekMyIpBtn');
     const myIpLoading = document.getElementById('myIpLoading');
     const myIpError = document.getElementById('myIpError');
@@ -557,7 +556,7 @@
       }
     });
     
-    // --- LOGIKA TOMBOL CEK IP HOST (TETAP SAMA) ---
+    // --- [DIUBAH] LOGIKA TOMBOL CEK IP HOST ---
     const hostnameInput = document.getElementById('hostnameInput');
     const cekHostBtn = document.getElementById('cekHostBtn');
     const hostLoading = document.getElementById('hostLoading');
@@ -566,6 +565,7 @@
     const hostOutput = document.getElementById('hostOutput');
     const copyHostBtn = document.getElementById('copyHostBtn');
 
+    // [DIUBAH] Fungsi handleCekHostClick sekarang mengambil detail
     async function handleCekHostClick() {
       const hostname = hostnameInput.value.trim();
       if (!hostname) {
@@ -578,33 +578,59 @@
       hostLoading.classList.remove('hidden');
 
       try {
-        const response = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(hostname)}`);
-        if (!response.ok) {
-          throw new Error('Respon jaringan tidak OK');
+        // Step 1: Ambil IP dari Google DNS
+        const dnsResponse = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(hostname)}`);
+        if (!dnsResponse.ok) {
+          throw new Error('Respon DNS tidak OK');
         }
-        const data = await response.json();
+        const dnsData = await dnsResponse.json();
+
+        if (dnsData.Status !== 0) { // 0 = NOERROR
+          throw new Error(`Hostname tidak ditemukan (Status: ${dnsData.Status})`);
+        }
+
+        if (!dnsData.Answer || dnsData.Answer.length === 0) {
+          throw new Error("Tidak ada jawaban DNS untuk host tersebut.");
+        }
+
+        const ipAddresses = dnsData.Answer
+          .filter(ans => ans.type === 1 || ans.type === 28) // 1=A (IPv4), 28=AAAA (IPv6)
+          .map(ans => ans.data);
+          
+        if (ipAddresses.length === 0) {
+           throw new Error("Tidak ditemukan record A atau AAAA.");
+        }
+
+        // Step 2: Buat array promise untuk mengambil detail setiap IP
+        const fetchPromises = ipAddresses.map(ip =>
+          fetch(`https://ipinfo.io/${ip}/json`)
+            .then(res => {
+              if (!res.ok) { throw new Error(`Status ${res.status}`); }
+              return res.json();
+            })
+            .then(ipDetails => ({ ip, details: ipDetails }))
+            .catch(e => ({ ip, error: e.message }))
+        );
+
+        // Step 3: Tunggu semua promise selesai
+        const results = await Promise.all(fetchPromises);
+        
+        // Step 4: Format hasil
+        let outputString = `Hostname: ${hostname}\n\n`;
+        results.forEach(res => {
+          outputString += `IP: ${res.ip}\n`;
+          if (res.details) {
+            outputString += `  Provider: ${res.details.org || 'N/A'}\n`;
+            outputString += `  Lokasi  : ${res.details.city || 'N/A'}, ${res.details.region || 'N/A'}, ${res.details.country || 'N/A'}\n`;
+          } else {
+            outputString += `  (Gagal mengambil detail IP: ${res.error})\n`;
+          }
+          outputString += `\n`; // Spasi antar IP
+        });
 
         hostLoading.classList.add('hidden');
-
-        if (data.Status !== 0) { 
-          throw new Error(`Hostname tidak ditemukan (Status: ${data.Status})`);
-        }
-
-        if (data.Answer && data.Answer.length > 0) {
-          const results = data.Answer
-            .filter(ans => ans.type === 1 || ans.type === 28) 
-            .map(ans => `${ans.type === 1 ? 'A   ' : 'AAAA'} : ${ans.data}`);
-          
-          if(results.length === 0) {
-            hostOutput.value = "Tidak ditemukan record A atau AAAA.";
-          } else {
-            hostOutput.value = results.join('\n');
-          }
-          hostHasil.classList.remove('hidden');
-        } else {
-          hostOutput.value = "Tidak ada jawaban DNS untuk host tersebut.";
-          hostHasil.classList.remove('hidden');
-        }
+        hostOutput.value = outputString;
+        hostHasil.classList.remove('hidden');
         
       } catch (e) {
         console.error('Gagal DNS lookup:', e);
