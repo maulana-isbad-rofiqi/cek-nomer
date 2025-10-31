@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>XL Tools - Cek Nomer & Kuota XL</title>
+  <title>Tools - Cek Nomer & Kuota XL & Axis</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -147,7 +147,7 @@
     
     <nav class="flex flex-col gap-4">
       <a href="#" id="berandaNavBtnMobile" class="text-lg text-slate-300 hover:text-cyan-400 transition nav-active">Beranda</a>
-      <a href="#" id="cekKuotaNavBtnMobile" class="text-lg text-slate-300 hover:text-cyan-400 transition">Cek Kuota</a>
+      <a href="#" id="cekKuotaNavBtnMobile" class="text-lg text-slate-300 hover:text-cyan-400 transition">Cek Nomer XL & Axis</a>
       <a href="#" id="cekMyIpNavBtnMobile" class="text-lg text-slate-300 hover:text-cyan-400 transition">Cek MyIp</a>
       <a href="#" id="cekIpHostNavBtnMobile" class="text-lg text-slate-300 hover:text-cyan-400 transition">Cek IP Host</a>
       <a href="#" id="converterNavBtnMobile" class="text-lg text-slate-300 hover:text-cyan-400 transition">Converter</a>
@@ -164,12 +164,12 @@
 
     <nav class="glass p-4 rounded-full w-full mb-6 flex flex-row justify-between items-center fade gap-4" style="animation-delay: 0.1s;">
       <div class="text-xl font-bold neon">
-        <i class="fa-solid fa-bolt mr-1"></i>XL Tools
+        <i class="fa-solid fa-bolt mr-1"></i>XL & Axis Tools
       </div>
       
       <div class="hidden sm:flex gap-5 items-center">
         <a href="#" id="berandaNavBtnDesktop" class="text-slate-300 hover:text-cyan-400 transition nav-active">Beranda</a>
-        <a href="#" id="cekKuotaNavBtnDesktop" class="text-slate-300 hover:text-cyan-400 transition">Cek Kuota</a>
+        <a href="#" id="cekKuotaNavBtnDesktop" class="text-slate-300 hover:text-cyan-400 transition">Cek Nomer XL & Axis/a>
         <a href="#" id="cekMyIpNavBtnDesktop" class="text-slate-300 hover:text-cyan-400 transition">Cek MyIp</a>
         <a href="#" id="cekIpHostNavBtnDesktop" class="text-slate-300 hover:text-cyan-400 transition">Cek IP Host</a>
         <a href="#" id="converterNavBtnDesktop" class="text-slate-300 hover:text-cyan-400 transition">Converter</a>
@@ -213,7 +213,7 @@
         
         <div id="cekKuotaCardBtn" class="glass card-glow p-6 rounded-2xl border border-cyan-400/20 text-center cursor-pointer fade" style="animation-delay: 0.5s;">
           <i class="fa-solid fa-magnifying-glass text-4xl neon mb-4"></i>
-          <h2 class="text-xl font-semibold text-cyan-300 mb-2">Cek Kuota & Nomer</h2>
+          <h2 class="text-xl font-semibold text-cyan-300 mb-2">Cek Nomer XL & Axis</h2>
           <p class="text-slate-400 text-sm">Lihat detail nomer, masa aktif, dan sisa kuota Anda.</p>
         </div>
         
@@ -252,10 +252,10 @@
     
     <div id="cekKuotaSection" class="glass p-8 rounded-3xl w-full fade hidden">
       <h1 class="text-3xl font-bold mb-4 neon text-center">
-        <i class="fa-solid fa-bolt mr-2"></i>Cek Nomer & Kuota XL
+        <i class="fa-solid fa-bolt mr-2"></i>Cek Detail Nomer & Kuota XL/Axis
       </h1>
       <p class="text-slate-300 mb-6 text-center">
-        Masukkan nomor XL Anda untuk melihat informasi kartu dan paket aktif.
+        Masukkan nomor XL/Axis Anda untuk melihat informasi kartu dan paket aktif.
       </p>
       <div class="flex flex-col sm:flex-row gap-4 mb-6">
         <input id="nomor" type="tel" placeholder="Masukkan nomor (08... / 62...)" 
@@ -266,7 +266,7 @@
         </button>
       </div>
       <div id="loading" class="hidden text-cyan-300 text-center py-4">
-        <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Memproses...
+        <i class="fa-solid fa-circle-notch fa-spin mr-2"></i>Dukun Sedang Memproses...
       </div>
       <div id="error" class="hidden text-red-400 text-center py-2 font-medium"></div>
       <div id="hasil" class="hidden fade">
@@ -412,8 +412,8 @@
         <button id="closeModalBtn" class="text-slate-400 hover:text-white transition text-3xl leading-none">&times;</button>
       </div>
       <div class="text-slate-300 space-y-3">
-        <p>Tool ini dibuat untuk memudahkan pengecekan nomor, masa aktif, dan sisa kuota paket XL Axiata.</p>
-        <p>Data diambil dari API XL langsung dan 100% akurat atau real-time. Gunakan dengan bijak.</p>
+        <p>Tool ini dibuat untuk memudahkan pengecekan nomor, masa aktif, dan sisa kuota paket XL dan Axis anda.</p>
+        <p>Data diambil dari API Resmi langsung dan 100% akurat atau real-time. Gunakan dengan bijak.</p>
         <p class="pt-2">Dibuat oleh: <span class="text-cyan-400 font-semibold">【﻿ 𝕀𝕥𝕤𝕓𝕒𝕕 𝕤𝕥𝕠𝕣𝕖 】</span></p>
       </div>
     </div>
@@ -569,9 +569,9 @@
 
         // Tampilkan di HTML (kode lama)
         info.innerHTML = `
-          <p><i class="fa-solid fa-phone mr-2 text-cyan-400"></i><b>Nomer XL:</b> ${subs.msisdn}</p>
+          <p><i class="fa-solid fa-phone mr-2 text-cyan-400"></i><b>Nomer XL/Axis:</b> ${subs.msisdn}</p>
           <p><i class="fa-solid fa-signal mr-2 text-cyan-400"></i><b>Operator:</b> ${subs.operator}</p>
-          <p><i class="fa-solid fa-wifi mr-2 text-cyan-400"></i><b>Type Jaringan:</b> ${subs.net_type}</p>
+          <p><i class="fa-solid fa-wifi mr-2 text-cyan-400"></i><b>Jenis Jaringan:</b> ${subs.net_type}</p>
           <p><i class="fa-solid fa-calendar-check mr-2 text-cyan-400"></i><b>Umur Kartu:</b> ${subs.tenure}</p>
           <p><i class="fa-solid fa-calendar-day mr-2 text-cyan-400"></i><b>Aktif Sampai:</b> ${subs.exp_date}</p>
           <p><i class="fa-solid fa-hourglass-half mr-2 text-cyan-400"></i><b>Masa Tenggang:</b> ${subs.grace_until}</p>
