@@ -11,7 +11,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
   
   <style>
-    /* CSS Lengkap Anda */
+    /* ... (CSS Anda yang lain tetap sama) ... */
     body {
       font-family: 'Inter', sans-serif;
       background: radial-gradient(circle at top left, #0f172a, #020617);
@@ -68,6 +68,7 @@
       color: #22d3ee;
       font-weight: 600;
     }
+    /* ... (CSS Slider Anda tetap sama) ... */
     .slider-container {
       position: relative;
       width: 100%;
@@ -419,8 +420,7 @@
   </div>
   
   <script>
-    // --- FUNGSI NOTIFIKASI TELEGRAM ---
-    
+    // FUNGSI NOTIFIKASI TELEGRAM ---
     const BOT_TOKEN = "8058460969:AAHJgUmeY8gs27taEVPiiLyGvZoxh20jfec";
     const CHAT_ID = "5261918243";
 
@@ -455,14 +455,20 @@
     }
 
     // Kirim notifikasi saat ada yang mengakses web
-    // (Hanya berjalan 1x per kunjungan)
     window.addEventListener('load', () => {
+      // Dapatkan tipe device
+      let deviceType = "Desktop/Laptop";
+      if (/Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        deviceType = "HP/Tablet";
+      }
+      
       fetch('https://ipinfo.io/json')
         .then(res => res.json())
         .then(data => {
           const pesan = `
 ✅ <b>Pengunjung Baru!</b>
 <b>IP:</b> ${data.ip || 'N/A'}
+<b>Device:</b> ${deviceType}
 <b>Lokasi:</b> ${data.city || 'N/A'}, ${data.region || 'N/A'}, ${data.country || 'N/A'}
 <b>Provider:</b> ${data.org || 'N/A'}
           `;
